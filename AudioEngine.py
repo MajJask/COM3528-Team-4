@@ -126,3 +126,28 @@ class AudioClient():
         # dynamic threshold
         self.thresh = 0
         self.thresh_min = 0.03
+
+    def callback_mics(self, data):
+        # data for angular calculation
+        self.audio_event = AudioEng.process_data(data.data)
+
+        # data for dynamic thresholding
+        data_t = np.asarray(data.data, 'float32') * (1.0 / 32768.0)
+        data_t = data_t.reshape((4, 500))
+        self.head_data = data_t[2][:]
+        if self.tmp is None:
+            self.tmp = np.hstack((self.tmp, np.abs(self.head_data)))
+        elif (len(self.tmp)<10500):
+            self.tmp = np.hstack((self.tmp, np.abs(self.head_data)))
+        else:
+            # when the buffer is full
+            self.tmp = np.hstack((self.tmp[-10000:], np.abs(self.head_data)))
+            # dynamic threshold is calculated and updated when new signal come
+            self.thresh = self.thresh_min + AudioEng.non_silence_thresh(self.tmp)
+
+        # data for display
+        data = np.asarray(data.data)
+        # 500 samples from each mics
+        data = np.transpose(data.reshape((self.no_of_mics, 500)))
+        data = np.flipud(data)
+        self.input_mics = np.vstack((data, self.input_mics[:self.x_len-500,:]))
