@@ -11,7 +11,7 @@ import numpy as np
 import rospy
 import miro2 as miro
 import geometry_msgs
-from node_detect_audio_engine import DetectAudioEngine
+from Localisation import DetectAudioEngine
 from sensor_msgs.msg import Range
 from std_msgs.msg import Int16MultiArray, UInt16MultiArray
 from matplotlib.lines import Line2D
@@ -151,3 +151,12 @@ class AudioClient():
         data = np.transpose(data.reshape((self.no_of_mics, 500)))
         data = np.flipud(data)
         self.input_mics = np.vstack((data, self.input_mics[:self.x_len-500,:]))
+
+
+if __name__ == "__main__":
+
+    rospy.init_node("point_to_sound", anonymous=True)
+    AudioEng = DetectAudioEngine()
+    main = AudioClient()
+    plt.show() # to stop signal display next run: comment this line and line 89(self.ani...)
+    main.loop()
