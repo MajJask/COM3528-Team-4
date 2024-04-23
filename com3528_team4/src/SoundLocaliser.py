@@ -105,9 +105,7 @@ class SoundLocalizer:
         self.right_ear_data = np.flipud(self.input_mics[:, 1])
         self.head_data = np.flipud(self.input_mics[:, 2])
         self.tail_data = np.flipud(self.input_mics[:, 3])
-        localizer = SoundLocalizer()
-        direction = localizer.process_data()
-        print("Direction: " + str(direction))
+        print(self.process_data())
 
         
 
@@ -116,6 +114,8 @@ if __name__ == '__main__':
     print ("Initialising")
     rospy.init_node('sound_localizer')
     AudioEng = DetectAudioEngine()
+    localizer = SoundLocalizer()
+    direction = localizer.process_data()
     
     
     
