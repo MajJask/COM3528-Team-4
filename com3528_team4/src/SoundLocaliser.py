@@ -13,8 +13,6 @@ import matplotlib.animation as animation
 from geometry_msgs.msg import Twist, TwistStamped
 import time
 
-
-
 class SoundLocalizer:
     def __init__(self, mic_distance=0.1):
         self.mic_distance = mic_distance
@@ -103,16 +101,24 @@ class SoundLocalizer:
         data = np.transpose(data.reshape((self.no_of_mics, 500)))
         data = np.flipud(data)
         self.input_mics = np.vstack((data, self.input_mics[:self.x_len-500,:]))
+        self.left_ear_data = np.flipud(self.input_mics[:, 0])
+        self.right_ear_data = np.flipud(self.input_mics[:, 1])
+        self.head_data = np.flipud(self.input_mics[:, 2])
+        self.tail_data = np.flipud(self.input_mics[:, 3])
+        localizer = SoundLocalizer()
+        direction = localizer.process_data()
+        print("Direction: " + str(direction))
+
         
 
 # Example of using the class
 if __name__ == '__main__':
     print ("Initialising")
     rospy.init_node('sound_localizer')
-    localizer = SoundLocalizer()
-    direction = localizer.process_data()
     AudioEng = DetectAudioEngine()
-    print("Direction: " + str(direction))
+    
+    
+    
     rospy.spin()  # Keeps Python from exiting until this node is stopped
 
 
