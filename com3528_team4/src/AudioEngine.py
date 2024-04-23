@@ -1,4 +1,4 @@
-§#	@section COPYRIGHT
+#	@section COPYRIGHT
 #	Copyright (C) 2021 Consequential Robotics Ltd
 #	
 #	@section AUTHOR

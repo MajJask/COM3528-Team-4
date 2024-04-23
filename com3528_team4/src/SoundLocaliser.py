@@ -40,6 +40,10 @@ class SoundLocalizer:
         self.right_ear_data = np.flipud(self.input_mics[:, 1])
         self.head_data = np.flipud(self.input_mics[:, 2])
         self.tail_data = np.flipud(self.input_mics[:, 3])
+        
+        self.tmp = []
+        self.thresh = 0
+        self.thresh_min = 0.03
 
         print("init success")
 
@@ -60,6 +64,7 @@ class SoundLocalizer:
         return delay
 
     def process_data(self):
+        print("left ear:", self.left_ear_data)
         delay_left_right = self.gcc(self.left_ear_data, self.right_ear_data)
         delay_left_tail = self.gcc(self.left_ear_data, self.tail_data)
         delay_right_tail = self.gcc(self.right_ear_data, self.tail_data)
@@ -98,12 +103,16 @@ class SoundLocalizer:
         data = np.transpose(data.reshape((self.no_of_mics, 500)))
         data = np.flipud(data)
         self.input_mics = np.vstack((data, self.input_mics[:self.x_len-500,:]))
+        
 
 # Example of using the class
 if __name__ == '__main__':
+    print ("Initialising")
     rospy.init_node('sound_localizer')
     localizer = SoundLocalizer()
     direction = localizer.process_data()
+    AudioEng = DetectAudioEngine()
     print("Direction: " + str(direction))
     rospy.spin()  # Keeps Python from exiting until this node is stopped
+
 
