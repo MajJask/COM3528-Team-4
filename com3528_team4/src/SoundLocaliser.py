@@ -100,8 +100,10 @@ class SoundLocalizer:
         self.input_mics = np.vstack((data, self.input_mics[:self.x_len-500,:]))
 
 # Example of using the class
-localizer = SoundLocalizer()
-print("got localiser")
-direction = localizer.process_data()
-print("provessed data")
-print("Estimated direction of sound:", direction)
+if __name__ == '__main__':
+    rospy.init_node('sound_localizer')
+    localizer = SoundLocalizer()
+    direction = localizer.process_data()
+    print("Direction: " + str(direction))
+    rospy.spin()  # Keeps Python from exiting until this node is stopped
+
