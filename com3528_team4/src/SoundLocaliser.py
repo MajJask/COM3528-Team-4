@@ -1,9 +1,47 @@
+#!/usr/bin/env python3
+
 import numpy as np
+import os
+import rospy
+import miro2 as miro
+import geometry_msgs
+from AudioEngine import DetectAudioEngine
+from std_msgs.msg import Int16MultiArray
+from matplotlib.lines import Line2D
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+from geometry_msgs.msg import Twist, TwistStamped
+import time
+
+
 
 class SoundLocalizer:
-    def __init__(self, mic_distance=0.1):  # Assume 10 cm between mics as an example
+    def __init__(self, mic_distance=0.1):
         self.mic_distance = mic_distance
-        self.speed_of_sound = 343  # Speed of sound in m/s
+        self.speed_of_sound = 343  # Speed of sound in m/smport miro2 as miro
+
+        self.x_len = 40000
+        self.no_of_mics = 4
+        self.input_mics = np.zeros((self.x_len, self.no_of_mics))
+        #print(self.input_mics) 
+
+        # which miro
+        topic_base_name = "/" + os.getenv("MIRO_ROBOT_NAME")
+       
+        # subscribers
+        self.sub_mics = rospy.Subscriber(topic_base_name + "/sensors/mics",
+            Int16MultiArray, self.callback_mics, queue_size=1, tcp_nodelay=True)
+
+        # publishers
+        self.pub_push = rospy.Publisher(topic_base_name + "/core/mpg/push", miro.msg.push, queue_size=0)
+        self.pub_wheels = rospy.Publisher(topic_base_name + "/control/cmd_vel", TwistStamped, queue_size=0)
+
+        self.left_ear_data = np.flipud(self.input_mics[:, 0])
+        self.right_ear_data = np.flipud(self.input_mics[:, 1])
+        self.head_data = np.flipud(self.input_mics[:, 2])
+        self.tail_data = np.flipud(self.input_mics[:, 3])
+
+        print("init success")
 
     def gcc(self, mic1, mic2):
         pad = np.zeros(len(mic1))
@@ -18,12 +56,13 @@ class SoundLocalizer:
         f_s /= denom
         correlation = np.fft.ifft(f_s)
         delay = np.argmax(np.abs(correlation)) - len(mic1)
+        print("Acquired delay: " + str(delay))
         return delay
 
-    def process_data(self, data_left, data_right, data_tail):
-        delay_left_right = self.gcc(data_left, data_right)
-        delay_left_tail = self.gcc(data_left, data_tail)
-        delay_right_tail = self.gcc(data_right, data_tail)
+    def process_data(self):
+        delay_left_right = self.gcc(self.left_ear_data, self.right_ear_data)
+        delay_left_tail = self.gcc(self.left_ear_data, self.tail_data)
+        delay_right_tail = self.gcc(self.right_ear_data, self.tail_data)
 
         # Convert delays to angles using small angle approximation
         angle_left_right = (delay_left_right / self.speed_of_sound) * self.mic_distance
@@ -32,13 +71,37 @@ class SoundLocalizer:
 
         # Simple average of angles as a naive triangulation approach
         estimated_direction = np.mean([angle_left_right, angle_left_tail, angle_right_tail])
-
+        print("Got direction")
         return estimated_direction
+
+    def callback_mics(self, data):
+        # data for angular calculation
+        self.audio_event = AudioEng.process_data(data.data)
+
+        # data for dynamic thresholding
+        data_t = np.asarray(data.data, 'float32') * (1.0 / 32768.0)
+        data_t = data_t.reshape((4, 500))    
+        self.head_data = data_t[2][:]
+        if self.tmp is None:
+            self.tmp = np.hstack((self.tmp, np.abs(self.head_data)))
+        elif (len(self.tmp)<10500):
+            self.tmp = np.hstack((self.tmp, np.abs(self.head_data)))
+        else:
+            # when the buffer is full
+            self.tmp = np.hstack((self.tmp[-10000:], np.abs(self.head_data)))
+            # dynamic threshold is calculated and updated when new signal come
+            self.thresh = self.thresh_min + AudioEng.non_silence_thresh(self.tmp)
+
+        # data for display
+        data = np.asarray(data.data)
+        # 500 samples from each mics
+        data = np.transpose(data.reshape((self.no_of_mics, 500)))
+        data = np.flipud(data)
+        self.input_mics = np.vstack((data, self.input_mics[:self.x_len-500,:]))
 
 # Example of using the class
 localizer = SoundLocalizer()
-data_left = np.random.rand(1024)
-data_right = np.random.rand(1024)
-data_tail = np.random.rand(1024)
-direction = localizer.process_data(data_left, data_right, data_tail)
+print("got localiser")
+direction = localizer.process_data()
+print("provessed data")
 print("Estimated direction of sound:", direction)
