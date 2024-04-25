@@ -12,6 +12,8 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from geometry_msgs.msg import Twist, TwistStamped
 import time
+from scipy.signal import find_peaks
+
 
 class SoundLocalizer:
     def __init__(self, mic_distance=0.1):
@@ -21,14 +23,14 @@ class SoundLocalizer:
         self.x_len = 40000
         self.no_of_mics = 4
         self.input_mics = np.zeros((self.x_len, self.no_of_mics))
-        #print(self.input_mics) 
+        # print(self.input_mics)
 
         # which miro
         topic_base_name = "/" + os.getenv("MIRO_ROBOT_NAME")
-       
+
         # subscribers
         self.sub_mics = rospy.Subscriber(topic_base_name + "/sensors/mics",
-            Int16MultiArray, self.callback_mics, queue_size=1, tcp_nodelay=True)
+                                         Int16MultiArray, self.callback_mics, queue_size=1, tcp_nodelay=True)
 
         # publishers
         self.pub_push = rospy.Publisher(topic_base_name + "/core/mpg/push", miro.msg.push, queue_size=0)
@@ -38,12 +40,28 @@ class SoundLocalizer:
         self.right_ear_data = np.flipud(self.input_mics[:, 1])
         self.head_data = np.flipud(self.input_mics[:, 2])
         self.tail_data = np.flipud(self.input_mics[:, 3])
-        
+
         self.tmp = []
         self.thresh = 0
         self.thresh_min = 0.03
 
         print("init success")
+
+    def find_high_peaks(self, audio_data):
+        peaks, _ = find_peaks(audio_data, height=0.5)
+
+        return peaks
+
+    def create_block(self, index, data, block_size=500):
+        # take the data around an index and create a block half of block size before and after the index
+        block = data[index - block_size // 2:index + block_size // 2]
+
+        return block
+
+    def cast_peak_data(self, high_point, sequence):
+        # take the high point and cast it to the sequence
+        peak_block = self.create_block(high_point, sequence)
+        return peak_block
 
     def gcc(self, mic1, mic2):
         pad = np.zeros(len(mic1))
@@ -62,10 +80,16 @@ class SoundLocalizer:
         return delay
 
     def process_data(self):
-        print("left ear:", self.left_ear_data)
-        delay_left_right = self.gcc(self.left_ear_data, self.right_ear_data)
-        delay_left_tail = self.gcc(self.left_ear_data, self.tail_data)
-        delay_right_tail = self.gcc(self.right_ear_data, self.tail_data)
+
+        # get the high points
+        print(self.left_ear_data)
+        peak_l = self.find_high_peaks(self.left_ear_data)
+        peak_r = self.find_high_peaks(self.right_ear_data)
+        peak_t = self.find_high_peaks(self.tail_data)
+
+        delay_left_right = self.gcc(peak_l, peak_r)
+        delay_left_tail = self.gcc(peak_l, peak_t)
+        delay_right_tail = self.gcc(peak_r, peak_t)
 
         # Convert delays to angles using small angle approximation
         angle_left_right = (delay_left_right / self.speed_of_sound) * self.mic_distance
@@ -73,6 +97,7 @@ class SoundLocalizer:
         angle_right_tail = (delay_right_tail / self.speed_of_sound) * self.mic_distance
 
         # Simple average of angles as a naive triangulation approach
+
         estimated_direction = np.mean([angle_left_right, angle_left_tail, angle_right_tail])
         print("Got direction")
         return estimated_direction
@@ -83,11 +108,11 @@ class SoundLocalizer:
 
         # data for dynamic thresholding
         data_t = np.asarray(data.data, 'float32') * (1.0 / 32768.0)
-        data_t = data_t.reshape((4, 500))    
+        data_t = data_t.reshape((4, 500))
         self.head_data = data_t[2][:]
         if self.tmp is None:
             self.tmp = np.hstack((self.tmp, np.abs(self.head_data)))
-        elif (len(self.tmp)<10500):
+        elif (len(self.tmp) < 10500):
             self.tmp = np.hstack((self.tmp, np.abs(self.head_data)))
         else:
             # when the buffer is full
@@ -100,25 +125,20 @@ class SoundLocalizer:
         # 500 samples from each mics
         data = np.transpose(data.reshape((self.no_of_mics, 500)))
         data = np.flipud(data)
-        self.input_mics = np.vstack((data, self.input_mics[:self.x_len-500,:]))
+        self.input_mics = np.vstack((data, self.input_mics[:self.x_len - 500, :]))
         self.left_ear_data = np.flipud(self.input_mics[:, 0])
         self.right_ear_data = np.flipud(self.input_mics[:, 1])
         self.head_data = np.flipud(self.input_mics[:, 2])
         self.tail_data = np.flipud(self.input_mics[:, 3])
         print(self.process_data())
 
-        
 
 # Example of using the class
 if __name__ == '__main__':
-    print ("Initialising")
+    print("Initialising")
     rospy.init_node('sound_localizer')
     AudioEng = DetectAudioEngine()
     localizer = SoundLocalizer()
     direction = localizer.process_data()
-    
-    
-    
+
     rospy.spin()  # Keeps Python from exiting until this node is stopped
-
-
