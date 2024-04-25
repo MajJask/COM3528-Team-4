@@ -133,7 +133,7 @@ class SoundLocalizer:
             estimated_direction = np.mean([angle_left_right, angle_left_tail, angle_right_tail])
             print("Got direction")
             return estimated_direction
-        except IndexError as e:
+        except Exception as e:
             print("No common high points")
             return None
 
