@@ -47,6 +47,23 @@ class SoundLocalizer:
 
         print("init success")
 
+    def block_data(self, data, block_size=500):
+        # Calculate the number of blocks
+        num_of_blocks = len(data) // block_size
+
+        blocks = []
+
+        for i in range(num_of_blocks):
+            start = i * block_size
+            end = start + block_size
+
+            block = data[start:end]
+
+            # Add the block to the list of blocks
+            blocks.append(block)
+
+        return np.array(blocks)
+
     def find_high_peaks(self, audio_data):
         peaks, _ = find_peaks(audio_data, height=0.5)
 
@@ -86,6 +103,8 @@ class SoundLocalizer:
         peak_l = self.find_high_peaks(self.left_ear_data)
         peak_r = self.find_high_peaks(self.right_ear_data)
         peak_t = self.find_high_peaks(self.tail_data)
+
+        # find a common p
 
         delay_left_right = self.gcc(peak_l, peak_r)
         delay_left_tail = self.gcc(peak_l, peak_t)
