@@ -233,13 +233,14 @@ class DetectAudioEngine():
 			azimuths_xco2, levels_xco2 = self.compute_azimuth_and_level(peaks_xco2, xco2)
 			azimuths_xco3, levels_xco3 = self.compute_azimuth_and_level(peaks_xco3, xco3)
 
-			level = (levels_xco1 + levels_xco2 + levels_xco3)	/ 3
+			level = levels_xco1[0]
 			azim = (azimuths_xco1 + azimuths_xco2 + azimuths_xco3) /3
-			
+
+			sound_angle = self.compute_sound_angle(self,azimuths_xco1, azimuths_xco2, azimuths_xco3)			
 
 			# store
 			if level > self.level:
-				self.azim = azim
+				self.azim = sound_angle
 				self.level = level
 			
 			return
@@ -249,6 +250,36 @@ class DetectAudioEngine():
 		peaks, _ = find_peaks(cross_correlation, height=0.5)
 
 		return peaks
+	
+	def compute_angle_from_baseline(azimuth1, azimuth2, baseline_length):
+		# Compute angle using trigonometry (e.g., Law of Cosines)
+		# The specific trigonometric formula depends on how the microphones are oriented and the geometry of the setup
+		pass
+
+	def combine_angles(angle1, angle2, angle3):
+		return (angle1 + angle2 + angle3) / 3
+	
+	def compute_sound_angle(self,azimuths_xco1, azimuths_xco2, azimuths_xco3):
+		# Define microphone positions (baseline lengths and angles can be pre-calibrated)
+		baseline_lengths = [INTER_EAR_DISTANCE, EAR_TAIL_DISTANCE, INTER_EAR_DISTANCE]
+		
+		# Compute angles of sound source relative to each baseline
+		angles = []
+		for i in range(len(azimuths_xco1)):
+			angle1 = azimuths_xco1[i]
+			angle2 = azimuths_xco2[i]
+			angle3 = azimuths_xco3[i]
+			
+			
+			# Combine angles to estimate overall angle
+			estimated_angle = self.combine_angles(self,angle1,angle2,angle3)
+			
+			angles.append(estimated_angle)
+			angle = sum(estimated_angle) / len(estimated_angle)
+		
+		return angle
+	
+
 	
 	
 
