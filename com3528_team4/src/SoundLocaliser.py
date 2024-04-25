@@ -51,7 +51,11 @@ class SoundLocalizer:
           
           return peaks
 
+    def create_block(self, index, data, block_size=500):
+        # take the data around an index and create a block half of block size before and after the index
+        block = data[index - block_size // 2:index + block_size // 2]
 
+        return block
 
     
     def gcc(self, mic1, mic2):
