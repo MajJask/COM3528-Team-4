@@ -152,7 +152,7 @@ class SoundLocalizer:
             # Simple average of angles as a naive triangulation approach
             estimated_direction = np.mean([angle_left_right, angle_left_tail, angle_right_tail])
             print("Got direction")
-            return estimated_direction
+            return np.degrees(estimated_direction)
         except Exception as e:
             print("No common high points")
             return None
