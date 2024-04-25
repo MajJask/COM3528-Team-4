@@ -132,7 +132,7 @@ class SoundLocalizer:
 
             threshold = 500
             # check that common values reach threshold
-            if len(common_values_l) < threshold or len(common_values_r) < threshold or len(common_values_t) < threshold:
+            if max(common_values_l) < threshold or max(common_values_r) < threshold or max(common_values_t) < threshold:
                 return None
 
             # Get block around max common high point
