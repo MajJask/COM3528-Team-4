@@ -110,28 +110,32 @@ class SoundLocalizer:
         set_r_peak = set(peak_r)
         set_t_peak = set(peak_t)
 
-        # Find common high points and convert to blocks
-        common_high_points = set_l_peak.intersection(set_r_peak, set_t_peak)
+        # Try ro find common high points and convert to blocks
+        try:
+            common_high_points = set_l_peak.intersection(set_r_peak, set_t_peak)
 
-        # Get blocks around common high points
-        common_blocks_l = [self.create_block(point, self.left_ear_data) for point in common_high_points]
-        common_blocks_r = [self.create_block(point, self.right_ear_data) for point in common_high_points]
-        common_blocks_t = [self.create_block(point, self.tail_data) for point in common_high_points]
+            # Get blocks around common high points
+            common_blocks_l = [self.create_block(point, self.left_ear_data) for point in common_high_points]
+            common_blocks_r = [self.create_block(point, self.right_ear_data) for point in common_high_points]
+            common_blocks_t = [self.create_block(point, self.tail_data) for point in common_high_points]
 
-        delay_left_right = self.gcc(common_blocks_l[0], common_blocks_r[0])
-        delay_left_tail = self.gcc(common_blocks_l[0], common_blocks_t[0])
-        delay_right_tail = self.gcc(common_blocks_r[0], common_blocks_t[0])
+            delay_left_right = self.gcc(common_blocks_l[0], common_blocks_r[0])
+            delay_left_tail = self.gcc(common_blocks_l[0], common_blocks_t[0])
+            delay_right_tail = self.gcc(common_blocks_r[0], common_blocks_t[0])
 
-        # Convert delays to angles using small angle approximation
-        angle_left_right = (delay_left_right / self.speed_of_sound) * self.mic_distance
-        angle_left_tail = (delay_left_tail / self.speed_of_sound) * self.mic_distance
-        angle_right_tail = (delay_right_tail / self.speed_of_sound) * self.mic_distance
+            # Convert delays to angles using small angle approximation
+            angle_left_right = (delay_left_right / self.speed_of_sound) * self.mic_distance
+            angle_left_tail = (delay_left_tail / self.speed_of_sound) * self.mic_distance
+            angle_right_tail = (delay_right_tail / self.speed_of_sound) * self.mic_distance
 
-        # Simple average of angles as a naive triangulation approach
+            # Simple average of angles as a naive triangulation approach
 
-        estimated_direction = np.mean([angle_left_right, angle_left_tail, angle_right_tail])
-        print("Got direction")
-        return estimated_direction
+            estimated_direction = np.mean([angle_left_right, angle_left_tail, angle_right_tail])
+            print("Got direction")
+            return estimated_direction
+        except IndexError as e:
+            print("No common high points")
+            return None
 
     def callback_mics(self, data):
         # data for angular calculation
