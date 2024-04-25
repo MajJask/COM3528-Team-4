@@ -120,19 +120,29 @@ class SoundLocalizer:
             common_values_r = [self.right_ear_data[point] for point in common_high_points]
             common_values_t = [self.tail_data[point] for point in common_high_points]
 
+            # Calculate the sum of values for each common high point
+            sum_values = [self.left_ear_data[point] + self.right_ear_data[point] + self.tail_data[point] for point in
+                          common_high_points]
+
+            # Find the index of the maximum sum
+            max_index = np.argmax(sum_values)
+
+            # Get the common high point with the largest accumulative value
+            max_common_high_point = list(common_high_points)[max_index]
+
             threshold = 500
             # check that common values reach threshold
             if len(common_values_l) < threshold or len(common_values_r) < threshold or len(common_values_t) < threshold:
                 return None
 
-            # Get blocks around common high points
-            common_blocks_l = [self.create_block(point, self.left_ear_data) for point in common_high_points]
-            common_blocks_r = [self.create_block(point, self.right_ear_data) for point in common_high_points]
-            common_blocks_t = [self.create_block(point, self.tail_data) for point in common_high_points]
+            # Get block around max common high point
+            max_common_block_l = self.create_block(max_common_high_point, self.left_ear_data)
+            max_common_block_r = self.create_block(max_common_high_point, self.right_ear_data)
+            max_common_block_t = self.create_block(max_common_high_point, self.tail_data)
 
-            delay_left_right = self.gcc(common_blocks_l[0], common_blocks_r[0])
-            delay_left_tail = self.gcc(common_blocks_l[0], common_blocks_t[0])
-            delay_right_tail = self.gcc(common_blocks_r[0], common_blocks_t[0])
+            delay_left_right = self.gcc(max_common_block_l, max_common_block_r)
+            delay_left_tail = self.gcc(max_common_block_l, max_common_block_t)
+            delay_right_tail = self.gcc(max_common_block_r, max_common_block_t)
 
             # Convert delays to angles using small angle approximation
             angle_left_right = (delay_left_right / self.speed_of_sound) * self.mic_distance
@@ -140,7 +150,6 @@ class SoundLocalizer:
             angle_right_tail = (delay_right_tail / self.speed_of_sound) * self.mic_distance
 
             # Simple average of angles as a naive triangulation approach
-
             estimated_direction = np.mean([angle_left_right, angle_left_tail, angle_right_tail])
             print("Got direction")
             return estimated_direction
