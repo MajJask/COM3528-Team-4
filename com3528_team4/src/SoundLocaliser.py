@@ -46,7 +46,6 @@ class SoundLocalizer:
         self.thresh_min = 0.03
 
         print("init success")
-
     def block_data(self, data, block_size=500):
         # Calculate the number of blocks
         num_of_blocks = len(data) // block_size
