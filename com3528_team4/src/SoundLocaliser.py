@@ -46,6 +46,7 @@ class SoundLocalizer:
         self.thresh_min = 0.03
 
         print("init success")
+
     def block_data(self, data, block_size=500):
         # Calculate the number of blocks
         num_of_blocks = len(data) // block_size
@@ -103,11 +104,23 @@ class SoundLocalizer:
         peak_r = self.find_high_peaks(self.right_ear_data)
         peak_t = self.find_high_peaks(self.tail_data)
 
-        # find a common p
+        # find a common points
+        # Convert to sets
+        set_l_peak = set(peak_l)
+        set_r_peak = set(peak_r)
+        set_t_peak = set(peak_t)
 
-        delay_left_right = self.gcc(peak_l, peak_r)
-        delay_left_tail = self.gcc(peak_l, peak_t)
-        delay_right_tail = self.gcc(peak_r, peak_t)
+        # Find common high points and convert to blocks
+        common_high_points = set_l_peak.intersection(set_r_peak, set_t_peak)
+
+        # Get blocks around common high points
+        common_blocks_l = [self.create_block(point, self.left_ear_data) for point in common_high_points]
+        common_blocks_r = [self.create_block(point, self.right_ear_data) for point in common_high_points]
+        common_blocks_t = [self.create_block(point, self.tail_data) for point in common_high_points]
+
+        delay_left_right = self.gcc(common_blocks_l[0], common_blocks_r[0])
+        delay_left_tail = self.gcc(common_blocks_l[0], common_blocks_t[0])
+        delay_right_tail = self.gcc(common_blocks_r[0], common_blocks_t[0])
 
         # Convert delays to angles using small angle approximation
         angle_left_right = (delay_left_right / self.speed_of_sound) * self.mic_distance
