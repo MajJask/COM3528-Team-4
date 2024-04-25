@@ -251,10 +251,7 @@ class DetectAudioEngine():
 
 		return peaks
 	
-	def compute_angle_from_baseline(azimuth1, azimuth2, baseline_length):
-		# Compute angle using trigonometry (e.g., Law of Cosines)
-		# The specific trigonometric formula depends on how the microphones are oriented and the geometry of the setup
-		pass
+
 
 	def combine_angles(angle1, angle2, angle3):
 		return (angle1 + angle2 + angle3) / 3
