@@ -110,9 +110,20 @@ class SoundLocalizer:
         set_r_peak = set(peak_r)
         set_t_peak = set(peak_t)
 
-        # Try ro find common high points and convert to blocks
+
+
+        # Try to find common high points and convert to blocks
         try:
             common_high_points = set_l_peak.intersection(set_r_peak, set_t_peak)
+
+            common_values_l = [self.left_ear_data[point] for point in common_high_points]
+            common_values_r = [self.right_ear_data[point] for point in common_high_points]
+            common_values_t = [self.tail_data[point] for point in common_high_points]
+
+            threshold = 500
+            # check that common values reach threshold
+            if len(common_values_l) < threshold or len(common_values_r) < threshold or len(common_values_t) < threshold:
+                return None
 
             # Get blocks around common high points
             common_blocks_l = [self.create_block(point, self.left_ear_data) for point in common_high_points]
