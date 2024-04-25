@@ -12,6 +12,8 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from geometry_msgs.msg import Twist, TwistStamped
 import time
+from scipy.signal import find_peaks
+
 
 class SoundLocalizer:
     def __init__(self, mic_distance=0.1):
@@ -44,7 +46,14 @@ class SoundLocalizer:
         self.thresh_min = 0.03
 
         print("init success")
+    def find_high_peaks(self,audio_data):
+          peaks, _ = find_peaks(audio_data, height=0.5)
+          
+          return peaks
 
+
+
+    
     def gcc(self, mic1, mic2):
         pad = np.zeros(len(mic1))
         s1 = np.hstack([mic1, pad])
@@ -61,11 +70,18 @@ class SoundLocalizer:
         print("Acquired delay: " + str(delay))
         return delay
 
+
     def process_data(self):
-        print("left ear:", self.left_ear_data)
-        delay_left_right = self.gcc(self.left_ear_data, self.right_ear_data)
-        delay_left_tail = self.gcc(self.left_ear_data, self.tail_data)
-        delay_right_tail = self.gcc(self.right_ear_data, self.tail_data)
+
+        # get the high points
+        print(self.left_ear_data)
+        peak_l = self.find_high_peaks(self.left_ear_data)
+        peak_r = self.find_high_peaks(self.right_ear_data)
+        peak_t = self.find_high_peaks(self.tail_data)
+
+        delay_left_right = self.gcc(peak_l, peak_r)
+        delay_left_tail = self.gcc(peak_l, peak_t)
+        delay_right_tail = self.gcc(peak_r, peak_t)
 
         # Convert delays to angles using small angle approximation
         angle_left_right = (delay_left_right / self.speed_of_sound) * self.mic_distance
@@ -73,6 +89,8 @@ class SoundLocalizer:
         angle_right_tail = (delay_right_tail / self.speed_of_sound) * self.mic_distance
 
         # Simple average of angles as a naive triangulation approach
+
+
         estimated_direction = np.mean([angle_left_right, angle_left_tail, angle_right_tail])
         print("Got direction")
         return estimated_direction
