@@ -144,15 +144,27 @@ class SoundLocalizer:
             delay_left_tail = self.gcc(max_common_block_l, max_common_block_t)
             delay_right_tail = self.gcc(max_common_block_r, max_common_block_t)
 
-            # Convert delays to angles using small angle approximation
-            angle_left_right = (delay_left_right / self.speed_of_sound) * self.mic_distance
-            angle_left_tail = (delay_left_tail / self.speed_of_sound) * self.mic_distance
-            angle_right_tail = (delay_right_tail / self.speed_of_sound) * self.mic_distance
 
-            # Simple average of angles as a naive triangulation approach
-            estimated_direction = np.mean([angle_left_right, angle_left_tail, angle_right_tail])
+            delta_left_right = delay_left_right * 343
+            delta_left_tail = delay_left_tail * 343
+            delta_right_tail = delay_right_tail * 343
+
+            cos_theta_left_right = np.arccos(delta_left_right / (2 * delay_left_right))
+            cos_theta_left_tail = np.arccos(delta_left_tail / (2 * delay_left_tail))
+            cos_theta_right_tail = np.arccos(delta_right_tail / (2 * delay_right_tail))
+
+            estimated_direction = np.mean([cos_theta_left_right, cos_theta_left_tail, cos_theta_right_tail])
+
+            # Convert delays to angles using small angle approximation
+            # angle_left_right = (delay_left_right / self.speed_of_sound) * self.mic_distance
+            # angle_left_tail = (delay_left_tail / self.speed_of_sound) * self.mic_distance
+            # angle_right_tail = (delay_right_tail / self.speed_of_sound) * self.mic_distance
+
+            # # Simple average of angles as a naive triangulation approach
+            # estimated_direction = np.mean([angle_left_right, angle_left_tail, angle_right_tail])
             print("Got direction")
-            return np.degrees(estimated_direction)
+            #return np.degrees(estimated_direction)
+            return estimated_direction
         except Exception as e:
             print("No common high points")
             return None
