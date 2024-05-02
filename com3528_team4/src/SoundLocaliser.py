@@ -178,8 +178,9 @@ class SoundLocalizer:
         # data for display
         data = np.asarray(data.data)
         # 500 samples from each mics
-        data = np.transpose(data.reshape((self.no_of_mics, 500)))
-        data = np.flipud(data)
+        data = np.transpose(data.reshape((self.no_of_mics, 500)))  # after this step each row is a sample and each
+        # column is the mag. at that sample time for each mic
+        data = np.flipud(data)  # flips as the data comes in reverse order
         self.input_mics = np.vstack((data, self.input_mics[:self.x_len - 500, :]))
         self.left_ear_data = np.flipud(self.input_mics[:, 0])
         self.right_ear_data = np.flipud(self.input_mics[:, 1])
