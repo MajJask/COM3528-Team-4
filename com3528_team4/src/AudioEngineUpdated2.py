@@ -303,7 +303,7 @@ class DetectAudioEngine():
 			estimated_angle = self.combine_angles(angle1,angle2,angle3)
 			
 			angles.append(estimated_angle)
-			angle = sum(estimated_angle) / len(estimated_angle)
+			angle = sum(angles) / len(angles)
 		
 		return angle
 	
