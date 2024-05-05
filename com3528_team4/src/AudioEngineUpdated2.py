@@ -32,7 +32,7 @@
 #	OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 #	SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #	
-#!/usr/bin/env python3
+
 
 import numpy as np
 import miro2 as miro
@@ -165,7 +165,7 @@ class DetectAudioEngine():
 		return Xgcorr
 		#return Xcorr
   
-	def compute_azimuth_and_level(peaks, cross_correlation):
+	def compute_azimuth_and_level(self,peaks, cross_correlation):
 		azimuths = []
 		levels = []
 
