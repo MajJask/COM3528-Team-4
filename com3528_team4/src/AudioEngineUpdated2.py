@@ -237,7 +237,10 @@ class DetectAudioEngine():
 			azimuths_xco2, levels_xco2 = self.compute_azimuth_and_level(peaks_xco2, xco2)
 			azimuths_xco3, levels_xco3 = self.compute_azimuth_and_level(peaks_xco3, xco3)
 
-			level = levels_xco1[0]
+			if len(levels_xco1) >= 1:
+				level = levels_xco1[0]
+			else:
+				level = 0
 			azim = (azimuths_xco1 + azimuths_xco2 + azimuths_xco3) /3
 
 			sound_angle = self.compute_sound_angle(self,azimuths_xco1, azimuths_xco2, azimuths_xco3)			
