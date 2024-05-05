@@ -284,9 +284,19 @@ class DetectAudioEngine():
 		angles = []
 		angle = None
 		for i in range(len(azimuths_xco1)):
-			angle1 = azimuths_xco1[i]
-			angle2 = azimuths_xco2[i]
-			angle3 = azimuths_xco3[i]
+			if len(azimuths_xco1) != 0:
+				angle1 = azimuths_xco1[i]
+			else:
+				angle1 = 0
+			if len(azimuths_xco2) != 0:
+				angle2 = azimuths_xco2[i]
+			else:
+				angle2 = 0
+			if len(azimuths_xco3) != 0:
+				angle3 = azimuths_xco3[i]
+			else:
+				angle3 = 0
+			
 			
 			
 			# Combine angles to estimate overall angle
