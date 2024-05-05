@@ -282,6 +282,7 @@ class DetectAudioEngine():
 		
 		# Compute angles of sound source relative to each baseline
 		angles = []
+		angle = None
 		for i in range(len(azimuths_xco1)):
 			angle1 = azimuths_xco1[i]
 			angle2 = azimuths_xco2[i]
