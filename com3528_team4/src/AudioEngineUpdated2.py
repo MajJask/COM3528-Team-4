@@ -273,7 +273,7 @@ class DetectAudioEngine():
 	
 
 
-	def combine_angles(angle1, angle2, angle3):
+	def combine_angles(self,angle1, angle2, angle3):
 		return (angle1 + angle2 + angle3) / 3
 	
 	def compute_sound_angle(self,azimuths_xco1, azimuths_xco2, azimuths_xco3):
