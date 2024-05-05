@@ -9,7 +9,7 @@ import numpy as np
 import rospy
 import miro2 as miro
 import geometry_msgs
-from AudioEngineUpdated import DetectAudioEngine
+from AudioEngineUpdated2 import DetectAudioEngine
 from std_msgs.msg import Int16MultiArray
 from matplotlib.lines import Line2D
 import matplotlib.pyplot as plt
