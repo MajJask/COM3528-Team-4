@@ -320,12 +320,12 @@ class DetectAudioEngine():
 		# Get locations of ears and tail in HEAD
 		loc_ear_l_HEAD = miro.lib.get("LOC_EAR_L_HEAD")
 		loc_ear_r_HEAD = miro.lib.get("LOC_EAR_R_HEAD")
-		loc_tail_HEAD = miro.lib.get("LOC_TAIL_TAIL")
+		loc_tail = miro.lib.get("LOC_TAIL")
 
 		# Transform into FOOT
 		loc_ear_l_FOOT = KC.changeFrameAbs(miro.constants.LINK_HEAD, miro.constants.LINK_FOOT, loc_ear_l_HEAD)
 		loc_ear_r_FOOT = KC.changeFrameAbs(miro.constants.LINK_HEAD, miro.constants.LINK_FOOT, loc_ear_r_HEAD)
-		loc_tail_FOOT = KC.changeFrameAbs(miro.constants.LINK_HEAD, miro.constants.LINK_FOOT, loc_tail_HEAD)
+		loc_tail_FOOT = KC.changeFrameAbs(miro.constants.LINK_HEAD, miro.constants.LINK_FOOT, loc_tail)
 
 		# Calculate the point between ears and tail at assumed height of noise sources
 		x_ears = 0.5 * (loc_ear_l_FOOT[0] + loc_ear_r_FOOT[0])
