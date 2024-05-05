@@ -241,15 +241,15 @@ class DetectAudioEngine():
 				level = levels_xco1[0]
 			else:
 				level = 0
-			if len(azimuths_xco1 != 0):	
+			if len(azimuths_xco1) != 0:	
 				azim1 = sum(azimuths_xco1) / len(azimuths_xco1)
 			else:
 				azim1 = 0
-			if len(azimuths_xco2 != 0):	
+			if len(azimuths_xco2) != 0:	
 				azim2 = sum(azimuths_xco2) / len(azimuths_xco2)
 			else:
 				azim2 = 0
-			if len(azimuths_xco3 != 0):	
+			if len(azimuths_xco3) != 0:	
 				azim3 = sum(azimuths_xco3) / len(azimuths_xco3)
 			else:
 				azim3 = 0
