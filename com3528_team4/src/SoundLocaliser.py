@@ -141,19 +141,16 @@ class SoundLocalizer:
             max_common_block_t = self.create_block(max_common_high_point, self.tail_data)
 
             delay_left_right = self.gcc(max_common_block_l, max_common_block_r)
+            x_l_r = xco = np.correlate(max_common_block_l, max_common_block_r, mode='same')
             delay_left_tail = self.gcc(max_common_block_l, max_common_block_t)
+            x_l_t = xco = np.correlate(max_common_block_l, max_common_block_t, mode='same')
             delay_right_tail = self.gcc(max_common_block_r, max_common_block_t)
+            x_r_t = xco = np.correlate(max_common_block_r, max_common_block_t, mode='same')
 
+            t1  =( x_l_r * 343)/(25)
+            t2 = (x_l_t * 343)/(25)
 
-            delta_left_right = delay_left_right * 343
-            delta_left_tail = delay_left_tail * 343
-            delta_right_tail = delay_right_tail * 343
-
-            cos_theta_left_right = np.arccos(delta_left_right / (2 * delay_left_right))
-            cos_theta_left_tail = np.arccos(delta_left_tail / (2 * delay_left_tail))
-            cos_theta_right_tail = np.arccos(delta_right_tail / (2 * delay_right_tail))
-
-            estimated_direction = np.mean([cos_theta_left_right, cos_theta_left_tail, cos_theta_right_tail])
+            return np.average(90-t1, t2)
 
             # Convert delays to angles using small angle approximation
             # angle_left_right = (delay_left_right / self.speed_of_sound) * self.mic_distance
