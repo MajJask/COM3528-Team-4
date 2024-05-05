@@ -256,7 +256,7 @@ class DetectAudioEngine():
 			
 			azim = (azim1 + azim2 + azim3) /3
 
-			sound_angle = self.compute_sound_angle(self,azimuths_xco1, azimuths_xco2, azimuths_xco3)			
+			sound_angle = self.compute_sound_angle(azimuths_xco1, azimuths_xco2, azimuths_xco3)			
 
 			# store
 			if level > self.level:
