@@ -179,6 +179,7 @@ class AudioClient():
             if self.audio_event != None:
                 if self.audio_event[0] != None:
                     ae = self.audio_event[0]
+                    print(ae.azim)
                     #print(self.audio_event[2])
                     #print("Azimuth: {:.2f}; Elevation: {:.2f}; Level : {:.2f}".format(ae.azim, ae.elev, ae.level))
                     self.frame = self.audio_event[1]
