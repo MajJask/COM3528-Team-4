@@ -320,7 +320,7 @@ class DetectAudioEngine():
 		# Get locations of ears and tail in HEAD
 		loc_ear_l_HEAD = miro.lib.get("LOC_EAR_L_HEAD")
 		loc_ear_r_HEAD = miro.lib.get("LOC_EAR_R_HEAD")
-		loc_tail = miro.lib.get("LOC_TAIL")
+		loc_tail = miro.lib.get("LOC_TAIL_MIC_HEAD")
 
 		# Transform into FOOT
 		loc_ear_l_FOOT = KC.changeFrameAbs(miro.constants.LINK_HEAD, miro.constants.LINK_FOOT, loc_ear_l_HEAD)
