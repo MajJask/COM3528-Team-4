@@ -45,6 +45,10 @@ class SoundLocalizer:
         self.thresh = 0
         self.thresh_min = 0.03
 
+        # Running average stuff
+        self.t1_values = []  # for each period of direction calulation we populate these lists
+        self.t2_values = []  # then once no more high points are foudn we will use these values to calculate averge values
+
         print("init success")
 
     def block_data(self, data, block_size=500):
@@ -147,10 +151,11 @@ class SoundLocalizer:
             delay_right_tail = self.gcc(max_common_block_r, max_common_block_t)
             x_r_t = xco = np.correlate(max_common_block_r, max_common_block_t, mode='same')
 
-            t1  =( x_l_r * 343)/(25)
-            t2 = (x_l_t * 343)/(25)
+            t1  = np.cos(np.argmax(x_l_r) * 343)/(.1)
+            t2 = np.cos(np.argmax(x_l_t) * 343)/(.25)
+            print(np.average(90-t1, t2))   
 
-            return np.average(90-t1, t2)
+            return t1 , t2
 
             # Convert delays to angles using small angle approximation
             # angle_left_right = (delay_left_right / self.speed_of_sound) * self.mic_distance
@@ -159,12 +164,9 @@ class SoundLocalizer:
 
             # # Simple average of angles as a naive triangulation approach
             # estimated_direction = np.mean([angle_left_right, angle_left_tail, angle_right_tail])
-            print("Got direction")
-            #return np.degrees(estimated_direction)
-            return estimated_direction
         except Exception as e:
             print("No common high points")
-            return None
+            return None, None
 
     def callback_mics(self, data):
         # data for angular calculation
@@ -195,7 +197,12 @@ class SoundLocalizer:
         self.right_ear_data = np.flipud(self.input_mics[:, 1])
         self.head_data = np.flipud(self.input_mics[:, 2])
         self.tail_data = np.flipud(self.input_mics[:, 3])
-        print(self.process_data())
+        
+        t1, t2 = self.process_data()
+        if t1 is None and t2 is None:  # then there are no high points (sound not produced)
+            if 
+
+
 
 
 # Example of using the class
@@ -205,5 +212,6 @@ if __name__ == '__main__':
     AudioEng = DetectAudioEngine()
     localizer = SoundLocalizer()
     direction = localizer.process_data()
+    
 
     rospy.spin()  # Keeps Python from exiting until this node is stopped

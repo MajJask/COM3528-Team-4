@@ -317,6 +317,7 @@ class DetectAudioEngine():
 		y_src = y + dy
 		z_src = ASSUMED_SOUND_SOURCE_HEIGHT
 
+
 		# map that back into HEAD
 		loc_src_FOOT = np.array([x_src, y_src, z_src])
 		loc_src_HEAD = KC.changeFrameAbs(miro.constants.LINK_FOOT, miro.constants.LINK_HEAD, loc_src_FOOT)

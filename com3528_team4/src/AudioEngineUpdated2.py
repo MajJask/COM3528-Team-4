@@ -236,7 +236,7 @@ class DetectAudioEngine():
 			azimuths_xco1, levels_xco1 = self.compute_azimuth_and_level(peaks_xco1, xco1)
 			azimuths_xco2, levels_xco2 = self.compute_azimuth_and_level(peaks_xco2, xco2)
 			azimuths_xco3, levels_xco3 = self.compute_azimuth_and_level(peaks_xco3, xco3)
-
+			
 			if len(levels_xco1) >= 1:
 				level = levels_xco1[0]
 			else:
