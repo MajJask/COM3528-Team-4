@@ -17,6 +17,7 @@ from scipy.signal import find_peaks
 
 class SoundLocalizer:
     def __init__(self, mic_distance=0.1):
+        self.averaging = None
         self.mic_distance = mic_distance
         self.speed_of_sound = 343  # Speed of sound in m/smport miro2 as miro
 
@@ -114,8 +115,6 @@ class SoundLocalizer:
         set_r_peak = set(peak_r)
         set_t_peak = set(peak_t)
 
-
-
         # Try to find common high points and convert to blocks
         try:
             common_high_points = set_l_peak.intersection(set_r_peak, set_t_peak)
@@ -151,16 +150,12 @@ class SoundLocalizer:
             delay_right_tail = self.gcc(max_common_block_r, max_common_block_t)
             x_r_t = xco = np.correlate(max_common_block_r, max_common_block_t, mode='same')
 
-            t1  = np.cos(np.argmax(x_l_r) * 343)/(.1)
-            t2 = np.cos(np.argmax(x_l_t) * 343)/(.25)
-            print(np.average(90-t1, t2))   
+            t1 = np.cos(np.argmax(x_l_r) * 343) / .1
+            t2 = np.cos(np.argmax(x_l_t) * 343) / .25
 
-            return t1 , t2
+            print(np.average(90 - t1, t2))
 
-            # Convert delays to angles using small angle approximation
-            # angle_left_right = (delay_left_right / self.speed_of_sound) * self.mic_distance
-            # angle_left_tail = (delay_left_tail / self.speed_of_sound) * self.mic_distance
-            # angle_right_tail = (delay_right_tail / self.speed_of_sound) * self.mic_distance
+            return t1, t2
 
             # # Simple average of angles as a naive triangulation approach
             # estimated_direction = np.mean([angle_left_right, angle_left_tail, angle_right_tail])
@@ -197,12 +192,21 @@ class SoundLocalizer:
         self.right_ear_data = np.flipud(self.input_mics[:, 1])
         self.head_data = np.flipud(self.input_mics[:, 2])
         self.tail_data = np.flipud(self.input_mics[:, 3])
-        
+
         t1, t2 = self.process_data()
-        if t1 is None and t2 is None:  # then there are no high points (sound not produced)
-            if 
-
-
+        if not (t1 is None or t2 is None) and not self.averaging:  # start averaging
+            self.averaging = True
+        elif self.averaging:  # continue averaging
+            self.t1_values.append(t1)
+            self.t2_values.append(t2)
+        else:  # calculate average
+            t1_avg = np.average(self.t1_values)
+            t2_avg = np.average(self.t2_values)
+            print("Average direction of sound:", t1_avg, t2_avg)
+            # reset values
+            self.t1_values = []
+            self.t2_values = []
+            self.averaging = False
 
 
 # Example of using the class
@@ -212,6 +216,5 @@ if __name__ == '__main__':
     AudioEng = DetectAudioEngine()
     localizer = SoundLocalizer()
     direction = localizer.process_data()
-    
 
     rospy.spin()  # Keeps Python from exiting until this node is stopped
