@@ -13,14 +13,20 @@ from geometry_msgs.msg import Twist, TwistStamped
 import time
 from scipy.signal import find_peaks
 from miro2.lib import wheel_speed2cmd_vel
-
+import pandas as pd
 
 class SoundLocalizer:
-    def __init__(self, mic_distance=0.1):
+    def __init__(self, mic_distance=0.1, testing_1='positive', testing_2='positive', matching_variables={}):
+        self.testing_1 = testing_1
+        self.testing_2 = testing_2
+        self.matching_variables = {}
+
+        rospy.on_shutdown(self.print_matching_variables)
+
+
         self.mic_distance = mic_distance
 
-        self.averaging = False
-        self.rotating = False
+        # sets up mic buffer
         self.x_len = 40000
         self.no_of_mics = 4
         self.input_mics = np.zeros((self.x_len, self.no_of_mics))
@@ -49,11 +55,20 @@ class SoundLocalizer:
         self.head_data = np.flipud(self.input_mics[:, 2])
         self.tail_data = np.flipud(self.input_mics[:, 3])
 
+        # flags for averaging and rotating
+        self.averaging = False
+        self.rotating = False
+
         # Running average stuff
         self.t1_values = []
         self.t2_values = []
 
         print("init success")
+
+    def print_matching_variables(self):
+        print("Matching variables on shutdown:")
+        for var_name, var_info in self.matching_variables.items():
+            print(f"{var_name}: {var_info}")
 
     @staticmethod
     def block_data(data, block_size=500):
@@ -128,16 +143,47 @@ class SoundLocalizer:
             max_common_block_r = self.create_block(max_common_high_point, self.right_ear_data)
             max_common_block_t = self.create_block(max_common_high_point, self.tail_data)
 
-            x_l_r = xco = np.correlate(max_common_block_l, max_common_block_r, mode='same')
-            x_l_t = xco = np.correlate(max_common_block_l, max_common_block_t, mode='same')
+            x1_l_r = xco = np.correlate(max_common_block_l, max_common_block_r, mode='same')
+            x2_l_t = xco = np.correlate(max_common_block_l, max_common_block_t, mode='same')
             x_r_t = xco = np.correlate(max_common_block_r, max_common_block_t, mode='same')
 
-            t1 = np.cos(np.argmax(x_l_r) * 343) / .1
-            t2 = np.cos(np.argmax(x_l_t) * 343) / .25
+            r1_hat = np.argmax(x1_l_r) /
+            r2_hat = np.argmax(x2_l_t)
 
-            print(t1, t2)
+            t1_1 = np.cos(r1_hat * 343) / .1
+            t2_1 = np.cos(r1_hat * 343) / .25
 
-            return t1, t2
+            t1_2 = np.cos((r1_hat / 20000) * 343) / .1
+            t2_2 = np.cos((r2_hat /20000) * 343) / .25
+
+            t1_3 = np.arccos((r1_hat / 20000) * 343 / .1)
+            t2_3 = np.arccos((r2_hat * 343) / .25)
+
+            t1_4 = np.arccos((r1_hat * 343) / .1)
+            t2_4 = np.arccos((r2_hat * 343) / .25)
+
+
+
+            variables = [x1_l_r, x2_l_t, x_r_t, r1_hat, r2_hat, t1_1, t2_1, t1_2, t2_2, t1_3, t2_3, t1_4, t2_4]
+            variable_names = ['x1_l_r', 'x2_l_t', 'x_r_t', 'r1_hat', 'r2_hat', 't1_1', 't2_1', 't1_2', 't2_2', 't1_3',
+                              't2_3', 't1_4', 't2_4']
+
+            for var, var_name in zip(variables, variable_names):
+                # Check if variable is positive or negative
+                var_status = 'positive' if var > 0 else 'negative'
+
+                # Check if it matches with self.testing_1 or self.testing_2 based on the second character of the variable name
+                if var_name[1] == '1':
+                    if var_status == self.testing_1:
+                        self.matching_variables[var_name] += 1
+                elif var_name[1] == '2':
+                    if var_status == self.testing_2:
+                        self.matching_variables[var_name] += 1
+
+
+            print(t1_1, t2_1)
+
+            return t1_1, t2_1
         except Exception as e:
             print("No common high points")
             return None, None
@@ -159,27 +205,36 @@ class SoundLocalizer:
             self.head_data = np.flipud(self.input_mics[:, 2])
             self.tail_data = np.flipud(self.input_mics[:, 3])
 
+            # t1 and t2 values are used to find the sound source
             t1, t2, = None, None
             try:
+
+                # if we are  we don't need to be looking for a sound source
                 if not self.rotating:
                     t1, t2 = self.process_data()
+            # n, high points were found
             except Exception as e:
                 t1 = None
                 t2 = None
 
-            # running average stuff
-            if not t1 is None and not self.averaging:  # if theres a value through and we are averaging start tracking
+            # running average for t1 and t2 so long as there are high points
+            # being found then we will assume their from the same source
+            # this should also reduce the error as a result of noise
+
+            # if there's a value  and  we are averaging start tracking
+            if not t1 is None and not self.averaging:
                 self.t1_values.append(t1)
                 self.t2_values.append(t2)
 
+            # if there's no value and we are averaging then stop tracking
+            # as there is no sound source (no high point found)
             if t1 is None and self.averaging and len(self.t1_values) > 0:
                 try:
-
+                    # average the values using running average lists
                     av1, av2 = np.average(self.t1_values), np.average(self.t2_values)
-                    print('avgs', av1, av2)
+                    print('running average for t1, t2: ', av1, av2)
                 except Exception as e:
                     print(e)
-                    print(self.t1_values, self.t2_values)
 
                 print('turning')
                 self.averaging = False
@@ -189,16 +244,20 @@ class SoundLocalizer:
                 self.t1_values = []
                 self.t2_values = []
 
-            self.averaging = t1 is None and not self.averaging  # sets averaging to true if none and not already averaging
+            # sets averaging to true if none and not already averaging
+            self.averaging = t1 is None and not self.averaging
 
         return None
 
-    def estimate_angle(self, t1, t2):
-        # t1 lr, t2 l, back
+    @staticmethod
+    def estimate_angle(t1, t2):
 
-        # pos on right ear
-        # neg on left ear
-        # pos if in front 
+        # t1 time delay between left and right ear
+        # positive then sound source is on right ear
+        # negative then sound source is on left ear
+
+        # t2 time delay between left ear and tail
+        # positive if in front
         # negative if behind 
 
         angle = 0
@@ -216,21 +275,13 @@ class SoundLocalizer:
         return np.deg2rad(angle)
 
     def turn_to_sound(self, azimuth):
-        print("trying to turn")
         self.rotating = True
         # Turn to the sound source
         tf = 2
         t0 = 0
-        counter = 0
         while t0 <= tf:
-            counter += 1
-
-            # self.drive(v*2,v*2)
             self.msg_wheels.twist.linear.x = 0.0
             self.msg_wheels.twist.angular.z = azimuth / 2
-
-            # test output
-            # self.msg_wheels.twist.angular.z = 0.0
 
             self.pub_wheels.publish(self.msg_wheels)
             rospy.sleep(0.01)
