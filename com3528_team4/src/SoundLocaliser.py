@@ -86,7 +86,7 @@ class SoundLocalizer:
         return np.array(blocks)
 
     def find_high_peaks(self, audio_data):
-        peaks, _ = find_peaks(audio_data, height=0.5)
+        peaks, _ = find_peaks(audio_data, height=0.6)
 
         return peaks
 
@@ -147,7 +147,7 @@ class SoundLocalizer:
             # Get the common high point with the largest accumulative value
             max_common_high_point = list(common_high_points)[max_index]
 
-            threshold = 500
+            threshold = 600
             # check that common values reach threshold
             if max(common_values_l) < threshold or max(common_values_r) < threshold or max(common_values_t) < threshold:
                 return None
@@ -178,87 +178,96 @@ class SoundLocalizer:
             return (None, None)
 
     def callback_mics(self, data):
-        # data for angular calculation
-        self.audio_event = AudioEng.process_data(data.data)
+        
+        
+        if not self.rotating:
+            # data for angular calculation
+            self.audio_event = AudioEng.process_data(data.data)
+            # data for dynamic thresholding
+            data_t = np.asarray(data.data, 'float32') * (1.0 / 32768.0)
+            data_t = data_t.reshape((4, 500))
+            self.head_data = data_t[2][:]
+            if self.tmp is None:
+                self.tmp = np.hstack((self.tmp, np.abs(self.head_data)))
+            elif (len(self.tmp) < 10500):
+                self.tmp = np.hstack((self.tmp, np.abs(self.head_data)))
+            else:
+                # when the buffer is full
+                self.tmp = np.hstack((self.tmp[-10000:], np.abs(self.head_data)))
+                # dynamic threshold is calculated and updated when new signal come
+                self.thresh = self.thresh_min + AudioEng.non_silence_thresh(self.tmp)
 
-        # data for dynamic thresholding
-        data_t = np.asarray(data.data, 'float32') * (1.0 / 32768.0)
-        data_t = data_t.reshape((4, 500))
-        self.head_data = data_t[2][:]
-        if self.tmp is None:
-            self.tmp = np.hstack((self.tmp, np.abs(self.head_data)))
-        elif (len(self.tmp) < 10500):
-            self.tmp = np.hstack((self.tmp, np.abs(self.head_data)))
-        else:
-            # when the buffer is full
-            self.tmp = np.hstack((self.tmp[-10000:], np.abs(self.head_data)))
-            # dynamic threshold is calculated and updated when new signal come
-            self.thresh = self.thresh_min + AudioEng.non_silence_thresh(self.tmp)
+            # data for display
+            data = np.asarray(data.data)
+            # 500 samples from each mics
+            data = np.transpose(data.reshape((self.no_of_mics, 500)))  # after this step each row is a sample and each
+            # column is the mag. at that sample time for each mic
+            data = np.flipud(data)  # flips as the data comes in reverse order
+            self.input_mics = np.vstack((data, self.input_mics[:self.x_len - 500, :]))
+            self.left_ear_data = np.flipud(self.input_mics[:, 0])
+            self.right_ear_data = np.flipud(self.input_mics[:, 1])
+            self.head_data = np.flipud(self.input_mics[:, 2])
+            self.tail_data = np.flipud(self.input_mics[:, 3])
 
-        # data for display
-        data = np.asarray(data.data)
-        # 500 samples from each mics
-        data = np.transpose(data.reshape((self.no_of_mics, 500)))  # after this step each row is a sample and each
-        # column is the mag. at that sample time for each mic
-        data = np.flipud(data)  # flips as the data comes in reverse order
-        self.input_mics = np.vstack((data, self.input_mics[:self.x_len - 500, :]))
-        self.left_ear_data = np.flipud(self.input_mics[:, 0])
-        self.right_ear_data = np.flipud(self.input_mics[:, 1])
-        self.head_data = np.flipud(self.input_mics[:, 2])
-        self.tail_data = np.flipud(self.input_mics[:, 3])
-
-        t1, t2, = None, None
-        try:
-            if not self.rotating:
-                t1, t2 = self.process_data()
-        except Exception as e:
-            t1 = None
-            t2 = None
-
-        if not t1 is None:  # calculated direction
-            # turn
             
-            self.turn_to_sound(self.estimate_angle(t1, t2))
+            t1, t2, = None, None
+            try:
+                if not self.rotating:
+                    t1, t2 = self.process_data()
+            except Exception as e:
+                t1 = None
+                t2 = None
+
+
+
+            # running average stuff
+            if not t1 is None and not self.averaging:  # if theres a value through and we are averaging start tracking
+                self.t1_values.append(t1)
+                self.t2_values.append(t2)
+            
+            if t1 is None and self.averaging and len(self.t1_values) > 0:
+                try:
+                    
+                    av1, av2 = np.average(self.t1_values), np.average(self.t2_values)
+                    print('avgs', av1, av2)
+                except Exception as e:
+                    print(e)
+                    print(self.t1_values, self.t2_values)
+                    
+                self.turning = True
+                print('turning')
+                self.averaging = False
+                an = self.estimate_angle(av1, av2)
+                self.turn_to_sound(an)
+                time.sleep(2)
+                self.t1_values = []
+                self.t2_values = []
+            
+            self.averaging =  t1 is None and not self.averaging # sets averaging to true if none and not already averaging
 
 
         return None
 
 
 
-        # running average stuff
-        """         
-        if not t1 is None and not self.averaging:  # if theres a value through and we are averaging start tracking
-            self.t1_values.append(t1)
-            self.t2_values.append(t2)
         
-        if t1 is None and self.averaging:
-            print('avg', np.average(t1), np.average(t2))
-            self.turning = True
-            print('turning')
-            self.averaging = False
-            an = self.estimate_angle(t1, t2)
-            self.turn_to_sound(an)
-            self.t1_values = []
-            self.t2_values = []
-        
-        self.averaging =  t1 is None and not self.averaging # sets averaging to true if none and not already averaging
-        """
-
     def estimate_angle(self, t1, t2):
+        #t1 lr, t2 l, back
+
         # pos on right ear
         # neg on left ear
         # pos if in front 
         # negative if behind 
 
         angle = 0
-        if t2 >= 0:
-            angle += 0
-        if t2 < 0:
-            angle += 180
-        if t1 > 0:
+        if t2 >= 0 and t1 > 0:
             angle += 45
-        if t1 < 0:
-            angle -= 45
+        if t2 >= 0 and t2 > 0:
+            angle += -45
+        if t2 < 0 and t1 > 0:
+            angle += (180 - 45)
+        if t2 < 0 and t1 < 0:
+            angle -= (180 - 45)
         print(angle)
         print(np.deg2rad(angle))
         return np.deg2rad(angle)
@@ -288,7 +297,7 @@ class SoundLocalizer:
 
             # self.drive(v*2,v*2)
             self.msg_wheels.twist.linear.x = 0.0
-            self.msg_wheels.twist.angular.z = azimuth 
+            self.msg_wheels.twist.angular.z =  azimuth / 2
 
             # test output
             # self.msg_wheels.twist.angular.z = 0.0
