@@ -16,12 +16,8 @@ from miro2.lib import wheel_speed2cmd_vel
 import pandas as pd
 
 class SoundLocalizer:
-    def __init__(self, mic_distance=0.1, testing_1='positive', testing_2='positive', matching_variables={}):
-        self.testing_1 = testing_1
-        self.testing_2 = testing_2
-        self.matching_variables = {}
+    def __init__(self, mic_distance=0.1):
 
-        rospy.on_shutdown(self.print_matching_variables)
 
 
         self.mic_distance = mic_distance
@@ -65,10 +61,22 @@ class SoundLocalizer:
 
         print("init success")
 
-    def print_matching_variables(self):
-        print("Matching variables on shutdown:")
-        for var_name, var_info in self.matching_variables.items():
-            print(f"{var_name}: {var_info}")
+    def gcc(self, mic1, mic2):
+        # Generalized Cross-Correlation implemented as in AudioEngine.py
+        pad1 = np.zeros(len(mic1))
+        pad2 = np.zeros(len(mic2))
+        s1 = np.hstack([mic1, pad1])
+        s2 = np.hstack([pad2, mic2])
+        f_s1 = np.fft.fft(s1)
+        f_s2 = np.fft.fft(s2)
+        f_s2c = np.conj(f_s2)
+        f_s = f_s1 * f_s2c
+        denom = np.abs(f_s)
+        denom[denom == 0] = 1e-10
+        f_s /= denom
+        correlation = np.fft.ifft(f_s)
+        delay = np.argmax(np.abs(correlation)) - len(mic1)
+        return delay
 
     @staticmethod
     def block_data(data, block_size=500):
@@ -143,42 +151,19 @@ class SoundLocalizer:
             max_common_block_r = self.create_block(max_common_high_point, self.right_ear_data)
             max_common_block_t = self.create_block(max_common_high_point, self.tail_data)
 
-            x1_l_r = xco = np.correlate(max_common_block_l, max_common_block_r, mode='same')
-            x2_l_t = xco = np.correlate(max_common_block_l, max_common_block_t, mode='same')
-            x_r_t = xco = np.correlate(max_common_block_r, max_common_block_t, mode='same')
+            x1_l_r = np.correlate(max_common_block_l, max_common_block_r, mode='same')
+            x2_l_t  = np.correlate(max_common_block_l, max_common_block_t, mode='same')
+            x_r_t  = np.correlate(max_common_block_r, max_common_block_t, mode='same')
 
-            r1_hat = np.argmax(x1_l_r) /
+            r1_hat = np.argmax(x1_l_r) 
             r2_hat = np.argmax(x2_l_t)
 
             t1_1 = np.cos(r1_hat * 343) / .1
-            t2_1 = np.cos(r1_hat * 343) / .25
-
-            t1_2 = np.cos((r1_hat / 20000) * 343) / .1
-            t2_2 = np.cos((r2_hat /20000) * 343) / .25
-
-            t1_3 = np.arccos((r1_hat / 20000) * 343 / .1)
-            t2_3 = np.arccos((r2_hat * 343) / .25)
-
-            t1_4 = np.arccos((r1_hat * 343) / .1)
-            t2_4 = np.arccos((r2_hat * 343) / .25)
+            t2_1 = np.cos(r2_hat * 343) / .25
 
 
 
-            variables = [x1_l_r, x2_l_t, x_r_t, r1_hat, r2_hat, t1_1, t2_1, t1_2, t2_2, t1_3, t2_3, t1_4, t2_4]
-            variable_names = ['x1_l_r', 'x2_l_t', 'x_r_t', 'r1_hat', 'r2_hat', 't1_1', 't2_1', 't1_2', 't2_2', 't1_3',
-                              't2_3', 't1_4', 't2_4']
 
-            for var, var_name in zip(variables, variable_names):
-                # Check if variable is positive or negative
-                var_status = 'positive' if var > 0 else 'negative'
-
-                # Check if it matches with self.testing_1 or self.testing_2 based on the second character of the variable name
-                if var_name[1] == '1':
-                    if var_status == self.testing_1:
-                        self.matching_variables[var_name] += 1
-                elif var_name[1] == '2':
-                    if var_status == self.testing_2:
-                        self.matching_variables[var_name] += 1
 
 
             print(t1_1, t2_1)
@@ -189,21 +174,22 @@ class SoundLocalizer:
             return None, None
 
     def callback_mics(self, data):
+    # data for angular calculation
+        # data for display
+        data = np.asarray(data.data)
+        # 500 samples from each mics
+        data = np.transpose(data.reshape((self.no_of_mics, 500)))  # after this step each row is a sample and each
+        # column is the mag. at that sample time for each mic
+        data = np.flipud(data)  # flips as the data comes in reverse order
+        self.input_mics = np.vstack((data, self.input_mics[:self.x_len - 500, :]))
+        self.left_ear_data = np.flipud(self.input_mics[:, 0])
+        self.right_ear_data = np.flipud(self.input_mics[:, 1])
+        self.head_data = np.flipud(self.input_mics[:, 2])
+        self.tail_data = np.flipud(self.input_mics[:, 3])
 
         global av1, av2
         if not self.rotating:
-            # data for angular calculation
-            # data for display
-            data = np.asarray(data.data)
-            # 500 samples from each mics
-            data = np.transpose(data.reshape((self.no_of_mics, 500)))  # after this step each row is a sample and each
-            # column is the mag. at that sample time for each mic
-            data = np.flipud(data)  # flips as the data comes in reverse order
-            self.input_mics = np.vstack((data, self.input_mics[:self.x_len - 500, :]))
-            self.left_ear_data = np.flipud(self.input_mics[:, 0])
-            self.right_ear_data = np.flipud(self.input_mics[:, 1])
-            self.head_data = np.flipud(self.input_mics[:, 2])
-            self.tail_data = np.flipud(self.input_mics[:, 3])
+            
 
             # t1 and t2 values are used to find the sound source
             t1, t2, = None, None
@@ -261,15 +247,15 @@ class SoundLocalizer:
         # negative if behind 
 
         angle = 0
-        if t2 < 0:  # then the sound is coming from behind
-            angle += 180
-        if t2 < 0:
+        if t2 >= 0:  # then the sound is coming from behind
             angle += 0
-        if t1 > 0:  # then the sound is coming from the right
-            angle += 45
-        if t1 < 0:  # then the sound is coming from the left
-            angle += -45
-
+        if t2 < 0:
+            angle += 180 
+        if t1 > 0:
+            angle += 45 * abs(t1)/2
+        if t1 < 0:
+            angle -= 45 * abs(t2)/2
+        
         print(angle)
         print(np.deg2rad(angle))
         return np.deg2rad(angle)

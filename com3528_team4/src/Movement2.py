@@ -66,7 +66,7 @@ class Movement:
 
             # self.drive(v*2,v*2)
             self.msg_wheels.twist.linear.x = 0.0
-            self.msg_wheels.twist.angular.z = azimuth / 2
+            self.msg_wheels.twist.angular.z = azimuth /2
 
             # test output
             # self.msg_wheels.twist.angular.z = 0.0
@@ -78,7 +78,7 @@ class Movement:
 
     def loop(self):
         print("loop")
-        self.turn_to_sound(np.deg2rad(+45))
+        self.turn_to_sound(np.deg2rad(-180))
         
 
 if __name__ == '__main__':
