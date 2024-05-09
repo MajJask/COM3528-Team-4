@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 import numpy as np
 import rospy
@@ -17,9 +19,7 @@ class Movement:
     def __init__(self):
         topic_base_name = "/" + os.getenv("MIRO_ROBOT_NAME")
 
-        # subscribers
-        self.sub_mics = rospy.Subscriber(topic_base_name + "/sensors/mics",
-                                         Int16MultiArray, self.callback_mics, queue_size=1, tcp_nodelay=True)
+       
 
         # publishers
         self.pub_push = rospy.Publisher(topic_base_name + "/core/mpg/push", miro.msg.push, queue_size=0)
@@ -57,21 +57,33 @@ class Movement:
 
     def turn_to_sound(self, azimuth):
         # Turn to the sound source
-        tf = 0.5
+        tf = 2
         t0 = 0
+        counter = 0
         while t0 <= tf:
+            counter += 1
+            print(counter)
+
             # self.drive(v*2,v*2)
             self.msg_wheels.twist.linear.x = 0.0
-            self.msg_wheels.twist.angular.z = azimuth * 3
+            self.msg_wheels.twist.angular.z = azimuth 
 
             # test output
             # self.msg_wheels.twist.angular.z = 0.0
 
             self.pub_wheels.publish(self.msg_wheels)
-            rospy.sleep(0.02)
-            t0 += 0.02
+            rospy.sleep(0.01)
+            t0 += 0.01
 
 
     def loop(self):
         print("loop")
-        self.turn_to_sound(0.5)
+        self.turn_to_sound(3.14)
+        
+
+if __name__ == '__main__':
+    print("Initialising")
+    rospy.init_node('mov')
+    mov = Movement()
+    mov.loop()
+

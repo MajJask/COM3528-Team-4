@@ -13,13 +13,18 @@ import matplotlib.animation as animation
 from geometry_msgs.msg import Twist, TwistStamped
 import time
 from scipy.signal import find_peaks
+from miro2.lib import wheel_speed2cmd_vel
+
 
 
 class SoundLocalizer:
     def __init__(self, mic_distance=0.1):
-        self.averaging = None
+        self.rotating = False
         self.mic_distance = mic_distance
         self.speed_of_sound = 343  # Speed of sound in m/smport miro2 as miro
+
+        self.turning = False
+        self.averaging = False
 
         self.x_len = 40000
         self.no_of_mics = 4
@@ -36,6 +41,17 @@ class SoundLocalizer:
         # publishers
         self.pub_push = rospy.Publisher(topic_base_name + "/core/mpg/push", miro.msg.push, queue_size=0)
         self.pub_wheels = rospy.Publisher(topic_base_name + "/control/cmd_vel", TwistStamped, queue_size=0)
+
+        # prepare push message
+        self.msg_push = miro.msg.push()
+        self.msg_push.link = miro.constants.LINK_HEAD
+        self.msg_push.flags = (miro.constants.PUSH_FLAG_NO_TRANSLATION + miro.constants.PUSH_FLAG_VELOCITY)
+
+        # time
+        self.frame_p = None
+        self.msg_wheels = TwistStamped()
+        self.controller = miro.lib.PoseController()
+        self.cmd_vel = miro.lib.DeltaPose()
 
         self.left_ear_data = np.flipud(self.input_mics[:, 0])
         self.right_ear_data = np.flipud(self.input_mics[:, 1])
@@ -98,13 +114,11 @@ class SoundLocalizer:
         f_s /= denom
         correlation = np.fft.ifft(f_s)
         delay = np.argmax(np.abs(correlation)) - len(mic1)
-        print("Acquired delay: " + str(delay))
         return delay
 
     def process_data(self):
 
         # get the high points
-        print(self.left_ear_data)
         peak_l = self.find_high_peaks(self.left_ear_data)
         peak_r = self.find_high_peaks(self.right_ear_data)
         peak_t = self.find_high_peaks(self.tail_data)
@@ -153,7 +167,7 @@ class SoundLocalizer:
             t1 = np.cos(np.argmax(x_l_r) * 343) / .1
             t2 = np.cos(np.argmax(x_l_t) * 343) / .25
 
-            print(np.average(90 - t1, t2))
+            print(t1, t2)
 
             return t1, t2
 
@@ -161,7 +175,7 @@ class SoundLocalizer:
             # estimated_direction = np.mean([angle_left_right, angle_left_tail, angle_right_tail])
         except Exception as e:
             print("No common high points")
-            return None, None
+            return (None, None)
 
     def callback_mics(self, data):
         # data for angular calculation
@@ -193,20 +207,97 @@ class SoundLocalizer:
         self.head_data = np.flipud(self.input_mics[:, 2])
         self.tail_data = np.flipud(self.input_mics[:, 3])
 
-        t1, t2 = self.process_data()
-        if not (t1 is None or t2 is None) and not self.averaging:  # start averaging
-            self.averaging = True
-        elif self.averaging:  # continue averaging
+        t1, t2, = None, None
+        try:
+            if not self.rotating:
+                t1, t2 = self.process_data()
+        except Exception as e:
+            t1 = None
+            t2 = None
+
+        if not t1 is None:  # calculated direction
+            # turn
+            
+            self.turn_to_sound(self.estimate_angle(t1, t2))
+
+
+        return None
+
+
+
+        # running average stuff
+        """         
+        if not t1 is None and not self.averaging:  # if theres a value through and we are averaging start tracking
             self.t1_values.append(t1)
             self.t2_values.append(t2)
-        else:  # calculate average
-            t1_avg = np.average(self.t1_values)
-            t2_avg = np.average(self.t2_values)
-            print("Average direction of sound:", t1_avg, t2_avg)
-            # reset values
+        
+        if t1 is None and self.averaging:
+            print('avg', np.average(t1), np.average(t2))
+            self.turning = True
+            print('turning')
+            self.averaging = False
+            an = self.estimate_angle(t1, t2)
+            self.turn_to_sound(an)
             self.t1_values = []
             self.t2_values = []
-            self.averaging = False
+        
+        self.averaging =  t1 is None and not self.averaging # sets averaging to true if none and not already averaging
+        """
+
+    def estimate_angle(self, t1, t2):
+        # pos on right ear
+        # neg on left ear
+        # pos if in front 
+        # negative if behind 
+
+        angle = 0
+        if t2 >= 0:
+            angle += 0
+        if t2 < 0:
+            angle += 180
+        if t1 > 0:
+            angle += 45
+        if t1 < 0:
+            angle -= 45
+        print(angle)
+        print(np.deg2rad(angle))
+        return np.deg2rad(angle)
+
+    def drive(self, speed_l=0.1, speed_r=0.1):
+        wheel_speed = [speed_l, speed_r]
+
+        # convert to comand vel from wheel speed
+        (dr, dtheta) = wheel_speed2cmd_vel(wheel_speed)
+
+        # Update the message with the desired speed
+        self.msg_wheels.twist.linear.x = dr
+        self.msg_wheels.twist.angular.z = dtheta
+
+        # Publish message to control/cmd_vel topic
+        self.pub_wheels.publish(self.msg_wheels)
+
+    def turn_to_sound(self, azimuth):
+        print("trying to turn")
+        self.rotating = True
+        # Turn to the sound source
+        tf = 2
+        t0 = 0
+        counter = 0
+        while t0 <= tf:
+            counter += 1
+
+            # self.drive(v*2,v*2)
+            self.msg_wheels.twist.linear.x = 0.0
+            self.msg_wheels.twist.angular.z = azimuth 
+
+            # test output
+            # self.msg_wheels.twist.angular.z = 0.0
+
+            self.pub_wheels.publish(self.msg_wheels)
+            rospy.sleep(0.01)
+            t0 += 0.01
+
+        self.rotating = False
 
 
 # Example of using the class
